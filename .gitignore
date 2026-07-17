@@ -1,0 +1,11 @@
+.env
+.venv/
+.idea/
+__pycache__/
+phoenix_data/*
+!phoenix_data/.gitkeep
+
+test/final_jsons/*
+!test/final_jsons/.gitkeep
+test/curr_test/*
+!test/curr_test/.gitkeep

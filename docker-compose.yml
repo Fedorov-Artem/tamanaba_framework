@@ -1,0 +1,46 @@
+services:
+  # Container for running the FastAPI server
+  agent-api:
+    build: .
+    container_name: ${COMPOSE_PROJECT_NAME}-api
+    ports:
+      - "${APP_PORT}:8000"
+    networks:
+      - agent-network
+    env_file:
+      - .env
+    command: fastapi dev server.py --host ${APP_HOST} --port 8000
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    depends_on:
+      - phoenix-server
+
+  # Container for running the Arize Phoenix
+  phoenix-server:
+    image: arizephoenix/phoenix:latest
+    container_name: ${COMPOSE_PROJECT_NAME}-phoenix
+    restart: unless-stopped
+    ports:
+      - "${PHOENIX_UI_PORT}:${PHOENIX_UI_PORT}"
+      - "${PHOENIX_GRPC_PORT}:${PHOENIX_GRPC_PORT}"
+    networks:
+      - agent-network
+    volumes:
+      - ./phoenix_data:/root/.phx
+    environment:
+      - PHOENIX_HOST=0.0.0.0
+      - PHOENIX_PORT=${PHOENIX_UI_PORT}
+      - PHOENIX_GRPC_PORT=${PHOENIX_GRPC_PORT}
+      - PHOENIX_SQLITE_DB_PATH=/root/.phx/phoenix.db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  agent-network:
+    driver: bridge
