@@ -243,7 +243,7 @@ class StructuredLLMProvider(BaseLLM):
     """
     Provider for API endpoints enforcing strict OpenAI-like 'json_schema' formatting.
     """
-    def __init__(self, url: str, payload_params: Dict[str, Any], headers: Dict[str, Any], num_retries: int = 2, timeout: int = 120):
+    def __init__(self, url: str, payload_params: Dict[str, Any], headers: Dict[str, Any], num_retries: int = 2, timeout: float = 120):
         super().__init__(url, payload_params, num_retries, timeout)
         self.headers = headers
 
