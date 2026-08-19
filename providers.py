@@ -15,11 +15,15 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Type, TypeVar
+
 import httpx
 from fastapi import HTTPException
 from pydantic import BaseModel
+from opentelemetry import trace
+from openinference.semconv.trace import SpanAttributes
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -137,18 +141,52 @@ class BaseLLM(ABC):
                             schema_class: Optional[Type[BaseModel]] = None, **kwargs) -> Dict[str, Any]:
         """
         The main public unified entrypoint.
-        Generates, validates, and extracts structured JSON schemas.
+        Generates, validates, extracts structured JSON schemas, and logs traces to Phoenix.
         """
+
         async def _generate_and_extract():
             format_schema = schema_class.model_json_schema() if schema_class else None
 
-            raw_text = await self._raw_ask(prompt, system_prompt, format_schema=format_schema, **kwargs)
+            # --- START ARIZE PHOENIX TRACING ---
+            # Создаем спан и указываем, что это вызов LLM
+            with tracer.start_as_current_span(
+                    "llm_generate",
+                    attributes={SpanAttributes.OPENINFERENCE_SPAN_KIND: "LLM"}
+            ) as span:
 
-            # Fail-fast check for Unicode artifacts to trigger _retry_with_backoff
-            if self._contains_unicode_artifacts(raw_text):
-                raise ValueError("Detected encoding corruption (Unicode artifacts) in LLM response.")
+                # 1. Записываем входные данные в трейс
+                # Пытаемся вытащить имя модели из параметров, если оно там есть
+                model_name = self.payload_params.get("model", "unknown")
+                span.set_attribute(SpanAttributes.LLM_MODEL_NAME, model_name)
+                span.set_attribute(SpanAttributes.LLM_SYSTEM_PROMPT, system_prompt)
+                span.set_attribute(SpanAttributes.LLM_INPUT_MESSAGES, prompt)
 
-            return self._extract_json(raw_text)
+                # Сохраняем все параметры payload (temperature, max_tokens и т.д.)
+                span.set_attribute(
+                    SpanAttributes.LLM_INVOCATION_PARAMETERS,
+                    json.dumps(self.payload_params)
+                )
+
+                try:
+                    # 2. Фактический вызов API
+                    raw_text = await self._raw_ask(prompt, system_prompt, format_schema=format_schema, **kwargs)
+
+                    # 3. Записываем сырой ответ модели в трейс до любых проверок
+                    span.set_attribute(SpanAttributes.LLM_OUTPUT_MESSAGES, raw_text)
+
+                    # Fail-fast проверка на кракозябры
+                    if self._contains_unicode_artifacts(raw_text):
+                        raise ValueError("Detected encoding corruption (Unicode artifacts) in LLM response.")
+
+                    # Извлечение JSON
+                    return self._extract_json(raw_text)
+
+                except Exception as e:
+                    # Если произошла ошибка (сеть, невалидный JSON, иероглифы) - Phoenix подсветит трейс красным
+                    span.record_exception(e)
+                    span.set_status(trace.StatusCode.ERROR, str(e))
+                    raise
+            # --- END TRACING ---
 
         return await self._retry_with_backoff(_generate_and_extract)
 
