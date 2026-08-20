@@ -1,7 +1,7 @@
-# Tamanaba Framework
+# Tamanaba Template
 ### *Production-Ready AI Agent Orchestration & Observability*
 
-Tamanaba is an enterprise-grade framework (template) designed for building, deploying, and monitoring scalable AI agents. It bridges the gap between experimental LLM scripts and highly available production microservices by combining graph-based execution, strict data validation, resilient LLM interactions, and first-class telemetry.
+Tamanaba is an enterprise-grade template designed for building, deploying, and monitoring scalable AI agents. It bridges the gap between experimental LLM scripts and highly available production microservices by combining graph-based execution, strict data validation, resilient LLM interactions, and first-class telemetry.
 
 ---
 
@@ -15,7 +15,7 @@ Tamanaba is an enterprise-grade framework (template) designed for building, depl
 
 ## Resilient LLM Engine
 
-At the heart of the framework is a custom, highly reliable abstraction layer (`BaseLLM` / `ask_llm.py`) built on `httpx` for interacting with various LLM providers (OpenAI, local Llama.cpp, etc.):
+At the heart of the template is a custom, highly reliable abstraction layer (`BaseLLM` / `ask_llm.py`) built on `httpx` for interacting with various LLM providers (OpenAI, local Llama.cpp, etc.):
 
 *   **Exponential Backoff Retries:** Automatically recovers from network hiccups or API rate limits.
 *   **Fail-Fast Validation:** Proactively detects text generation glitches (e.g., Unicode/CJK artifacts in localized outputs) and immediately triggers a retry.
@@ -25,7 +25,7 @@ At the heart of the framework is a custom, highly reliable abstraction layer (`B
 
 ## First-Class Observability (Arize Phoenix)
 
-The framework includes native OpenTelemetry (OTel) integration seamlessly injected into both the API layer and the LLM Base class:
+The template includes native OpenTelemetry (OTel) integration seamlessly injected into both the API layer and the LLM Base class:
 
 *   **Deep LLM Tracing:** Captures exact prompts, system instructions, invocation parameters (temperature, max tokens), and raw responses directly into Arize Phoenix dashboards.
 *   **Online Evaluations:** Automatically compares agent outputs against ground-truth datasets and submits execution metrics (Prediction Match Scores) as trace annotations via the Phoenix Client.
